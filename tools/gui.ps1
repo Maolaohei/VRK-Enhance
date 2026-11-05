@@ -1,12 +1,15 @@
 ﻿param(
     [string]$GameDir = '',
-    [switch]$SelfTest
+    [switch]$SelfTest,
+    [string]$Lang = ''
 )
 
 # VRK-Enhance 图形安装面板（WinForms，无外部依赖）
 # 所有安装/还原逻辑复用 tools/setup.ps1，本文件只负责界面与调用。
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot "i18n.ps1")
+$script:VRKLang = Resolve-VrkLang $Lang
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -20,7 +23,7 @@ $LogFile = Join-Path $StateDir 'gui-last.log'
 $script:GameDir = $GameDir
 
 function Get-GameRoot {
-    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $SetupPs1 -EchoGameDir 2>&1
+    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $SetupPs1 -EchoGameDir -Lang $script:VRKLang 2>&1
     if (-not $out) { return '' }
     return ([string]($out | Select-Object -First 1)).Trim()
 }
@@ -28,8 +31,8 @@ function Get-GameRoot {
 function Get-Catalog {
     $catalogFile = Join-Path $StateDir 'catalog.txt'
     if (Test-Path -LiteralPath $catalogFile) { Remove-Item -LiteralPath $catalogFile -Force }
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $SetupPs1 -List -ListFile $catalogFile | Out-Null
-    if (-not (Test-Path -LiteralPath $catalogFile)) { throw 'setup.ps1 没能写出组件表' }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $SetupPs1 -List -ListFile $catalogFile -Lang $script:VRKLang | Out-Null
+    if (-not (Test-Path -LiteralPath $catalogFile)) { throw (M 'setup.ps1 could not write the component list' 'setup.ps1 没能写出组件表') }
     $lines = [System.IO.File]::ReadAllLines($catalogFile, [System.Text.Encoding]::UTF8)
     $out = @()
     foreach ($ln in $lines) {
@@ -38,7 +41,7 @@ function Get-Catalog {
         if ($f.Count -lt 4) { continue }
         $out += [pscustomobject]@{ Id = $f[0]; Title = $f[1]; Note = $f[2]; Installed = ($f[3] -eq '1') }
     }
-    if ($out.Count -eq 0) { throw '组件表为空' }
+    if ($out.Count -eq 0) { throw (M 'component list is empty' '组件表为空') }
     return $out
 }
 
@@ -53,7 +56,7 @@ function Write-Log([System.Windows.Forms.RichTextBox]$box, [string]$text) {
 
 function Invoke-Setup([string[]]$componentIds, [string]$mode, [bool]$dryRun) {
     $q = [char]34
-    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ($q + $SetupPs1 + $q), '-Yes')
+    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ($q + $SetupPs1 + $q), '-Yes', '-Lang', $script:VRKLang)
     if ($componentIds -and $componentIds.Count -gt 0) { $argList += @('-Components', ($componentIds -join ',')) }
     if ($mode) { $argList += @('-Mode', $mode) }
     if ($dryRun) { $argList += '-DryRun' }
@@ -77,21 +80,21 @@ function Invoke-Setup([string[]]$componentIds, [string]$mode, [bool]$dryRun) {
 }
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'VRK Enhance - 一键安装 / 还原'
+$form.Text = (M 'VRK Enhance - installer / restore' 'VRK Enhance - 一键安装 / 还原')
 $form.Size = New-Object System.Drawing.Size(880, 720)
 $form.MinimumSize = New-Object System.Drawing.Size(760, 620)
 $form.StartPosition = 'CenterScreen'
 $form.Font = New-Object System.Drawing.Font('Microsoft YaHei UI', 9)
 
 $lblInfo = New-Object System.Windows.Forms.Label
-$lblInfo.Text = '勾选需要的组件，然后点【安装选中】；想撤销就点【还原选中】。首次使用建议先点【安装推荐】。'
+$lblInfo.Text = (M 'Tick the components you want, then press Install selected. Undo with Restore selected. First time: Recommended.' '勾选需要的组件，然后点【安装选中】；想撤销就点【还原选中】。首次使用建议先点【安装推荐】。')
 $lblInfo.Location = New-Object System.Drawing.Point(14, 10)
 $lblInfo.Size = New-Object System.Drawing.Size(840, 22)
 $lblInfo.Anchor = 'Top,Left,Right'
 $form.Controls.Add($lblInfo)
 
 $grp = New-Object System.Windows.Forms.GroupBox
-$grp.Text = '组件（[已装] 表示当前已生效）'
+$grp.Text = (M 'Components ([on] = currently active)' '组件（[已装] 表示当前已生效）')
 $grp.Location = New-Object System.Drawing.Point(14, 38)
 $grp.Size = New-Object System.Drawing.Size(840, 320)
 $grp.Anchor = 'Top,Left,Right'
@@ -108,7 +111,7 @@ $script:CheckBoxes = @()
 $script:Catalog = @()
 
 $lblStatus = New-Object System.Windows.Forms.Label
-$lblStatus.Text = '正在读取组件表…'
+$lblStatus.Text = (M 'reading component list...' '正在读取组件表…')
 $lblStatus.Location = New-Object System.Drawing.Point(18, 434)
 $lblStatus.Size = New-Object System.Drawing.Size(840, 20)
 $lblStatus.Anchor = 'Top,Left,Right'
@@ -122,7 +125,7 @@ function Build-CheckList {
     $y = 4
     foreach ($c in $script:Catalog) {
         $cb = New-Object System.Windows.Forms.CheckBox
-        $suffix = if ($c.Installed) { '  [已装]' } else { '' }
+        $suffix = if ($c.Installed) { (M '  [on]' '  [已装]') } else { '' }
         $cb.Text = $c.Title + $suffix
         $cb.Tag = $c.Id
         $cb.Location = New-Object System.Drawing.Point(8, $y)
@@ -138,12 +141,12 @@ function Build-CheckList {
     $root = Get-GameRoot
     if ($root) {
         if (-not [string]::IsNullOrWhiteSpace($script:GameDir) -and $script:GameDir -ne $root) {
-            $lblStatus.Text = '共 ' + $script:Catalog.Count + ' 个组件，已安装 ' + $installedCount + ' 个；游戏目录（手动指定）：' + $script:GameDir
+            $lblStatus.Text = (M 'components: ' '共 ') + $script:Catalog.Count + (M ', installed: ' ' 个组件，已安装 ') + $installedCount + (M '; game folder (picked): ' ' 个；游戏目录（手动指定）：') + $script:GameDir
         } else {
-            $lblStatus.Text = '共 ' + $script:Catalog.Count + ' 个组件，已安装 ' + $installedCount + ' 个；游戏目录（自动定位）：' + $root
+            $lblStatus.Text = (M 'components: ' '共 ') + $script:Catalog.Count + (M ', installed: ' ' 个组件，已安装 ') + $installedCount + (M '; game folder (auto): ' ' 个；游戏目录（自动定位）：') + $root
         }
     } else {
-        $lblStatus.Text = '共 ' + $script:Catalog.Count + ' 个组件，已安装 ' + $installedCount + ' 个；没找到游戏目录，请点【选择目录…】'
+        $lblStatus.Text = (M 'components: ' '共 ') + $script:Catalog.Count + (M ', installed: ' ' 个组件，已安装 ') + $installedCount + (M '; game folder not found, use Pick folder...' ' 个；没找到游戏目录，请点【选择目录…】')
         $lblStatus.ForeColor = [System.Drawing.Color]::Firebrick
     }
 }
@@ -162,35 +165,35 @@ function New-Btn([string]$text, [int]$w) {
     return $b
 }
 
-$btnAll     = New-Btn '全选' 80
-$btnNone    = New-Btn '全不选' 80
-$btnInstall = New-Btn '安装选中' 100
-$btnRestore = New-Btn '还原选中' 100
-$btnRec     = New-Btn '安装推荐' 100
-$btnPick    = New-Btn '选择目录…' 110
-$btnClose   = New-Btn '关闭' 80
+$btnAll     = New-Btn (M 'All' '全选') 80
+$btnNone    = New-Btn (M 'None' '全不选') 80
+$btnInstall = New-Btn (M 'Install selected' '安装选中') 100
+$btnRestore = New-Btn (M 'Restore selected' '还原选中') 100
+$btnRec     = New-Btn (M 'Recommended' '安装推荐') 100
+$btnPick    = New-Btn (M 'Pick folder...' '选择目录…') 110
+$btnClose   = New-Btn (M 'Close' '关闭') 80
 foreach ($b in @($btnAll, $btnNone, $btnInstall, $btnRestore, $btnRec, $btnPick, $btnClose)) { $btnRow.Controls.Add($b) }
 
 $btnPick.add_Click({
     $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dlg.Description = '选择 VR Kanojo 的游戏根目录（里面有 VR_Kanojo.exe）'
+    $dlg.Description = (M 'Pick the VR Kanojo game root (the folder with VR_Kanojo.exe)' '选择 VR Kanojo 的游戏根目录（里面有 VR_Kanojo.exe）')
     $dlg.ShowNewFolderButton = $false
     if ($script:GameDir) { $dlg.SelectedPath = $script:GameDir }
     elseif (Test-Path -LiteralPath $RepoDir) { $dlg.SelectedPath = $RepoDir }
     if ($dlg.ShowDialog() -ne 'OK') { return }
     $picked = $dlg.SelectedPath
     if (-not (Test-Path -LiteralPath (Join-Path $picked 'VR_Kanojo.exe'))) {
-        [void][System.Windows.Forms.MessageBox]::Show('这个目录里没有 VR_Kanojo.exe，请选择游戏根目录。', 'VRK Enhance')
+        [void][System.Windows.Forms.MessageBox]::Show((M 'That folder has no VR_Kanojo.exe - pick the game root.' '这个目录里没有 VR_Kanojo.exe，请选择游戏根目录。'), 'VRK Enhance')
         return
     }
     $script:GameDir = $picked
     $lblStatus.ForeColor = [System.Drawing.Color]::DimGray
-    Write-Log $tbLog ('游戏目录已指定：' + $picked)
+    Write-Log $tbLog ((M 'game folder set to ' '游戏目录已指定：') + $picked)
     Build-CheckList
 })
 
 $chkDry = New-Object System.Windows.Forms.CheckBox
-$chkDry.Text = '试运行（DryRun：只显示会改什么，不动文件）'
+$chkDry.Text = (M 'Dry run (DryRun: show what would change, touch nothing)' '试运行（DryRun：只显示会改什么，不动文件）')
 $chkDry.Location = New-Object System.Drawing.Point(18, 408)
 $chkDry.Size = New-Object System.Drawing.Size(420, 22)
 $chkDry.Anchor = 'Top,Left'
@@ -229,24 +232,24 @@ $btnClose.add_Click({ $form.Close() })
 $btnRec.add_Click({
     $recommended = @('flatfps', 'upscale', 'perf', 'prewarm', 'texplus', 'launcher')
     foreach ($cb in $script:CheckBoxes) { $cb.Checked = ($recommended -contains [string]$cb.Tag) }
-    Write-Log $tbLog '已勾选推荐组合：核心 / 超分 / 优化 / 预热 / 贴图 / 启动器'
+    Write-Log $tbLog (M 'Recommended set ticked: core / upscale / perf / prewarm / textures / launcher' '已勾选推荐组合：核心 / 超分 / 优化 / 预热 / 贴图 / 启动器')
 })
 
 $btnInstall.add_Click({
     $ids = Get-CheckedIds
-    if ($ids.Count -eq 0) { [void][System.Windows.Forms.MessageBox]::Show('先勾选要安装的组件。', 'VRK Enhance'); return }
+    if ($ids.Count -eq 0) { [void][System.Windows.Forms.MessageBox]::Show((M 'Tick the components to install first.' '先勾选要安装的组件。'), 'VRK Enhance'); return }
     $form.Cursor = [System.Windows.Forms.Cursors]::WaitCursor
     $btnInstall.Enabled = $false
     $btnRestore.Enabled = $false
     $mark = ''
-    if ($chkDry.Checked) { $mark = '（试运行）' }
-    Write-Log $tbLog ('安装：' + ($ids -join ', ') + $mark)
+    if ($chkDry.Checked) { $mark = (M ' (dry run)' '（试运行）') }
+    Write-Log $tbLog ((M 'install: ' '安装：') + ($ids -join ', ') + $mark)
     try {
         $r = Invoke-Setup -componentIds $ids -mode '' -dryRun $chkDry.Checked
         Append-SetupOutput $r
-        Write-Log $tbLog ('安装结束，退出码 ' + $r.ExitCode)
+        Write-Log $tbLog ((M 'install finished, exit code ' '安装结束，退出码 ') + $r.ExitCode)
     } catch {
-        Write-Log $tbLog ('安装出错：' + $_.Exception.Message)
+        Write-Log $tbLog ((M 'install failed: ' '安装出错：') + $_.Exception.Message)
     } finally {
         $btnInstall.Enabled = $true
         $btnRestore.Enabled = $true
@@ -257,20 +260,20 @@ $btnInstall.add_Click({
 
 $btnRestore.add_Click({
     $ids = Get-CheckedIds
-    if ($ids.Count -eq 0) { [void][System.Windows.Forms.MessageBox]::Show('先勾选要还原的组件。', 'VRK Enhance'); return }
-    $msg = '确定还原这些组件吗？' + [Environment]::NewLine + ($ids -join ', ')
+    if ($ids.Count -eq 0) { [void][System.Windows.Forms.MessageBox]::Show((M 'Tick the components to restore first.' '先勾选要还原的组件。'), 'VRK Enhance'); return }
+    $msg = (M 'Restore these components?' '确定还原这些组件吗？') + [Environment]::NewLine + ($ids -join ', ')
     $ans = [System.Windows.Forms.MessageBox]::Show($msg, 'VRK Enhance', 'OKCancel', 'Question')
     if ($ans -ne 'OK') { return }
     $form.Cursor = [System.Windows.Forms.Cursors]::WaitCursor
     $btnInstall.Enabled = $false
     $btnRestore.Enabled = $false
-    Write-Log $tbLog ('还原：' + ($ids -join ', '))
+    Write-Log $tbLog ((M 'restore: ' '还原：') + ($ids -join ', '))
     try {
         $r = Invoke-Setup -componentIds $ids -mode 'restore' -dryRun $chkDry.Checked
         Append-SetupOutput $r
-        Write-Log $tbLog ('还原结束，退出码 ' + $r.ExitCode)
+        Write-Log $tbLog ((M 'restore finished, exit code ' '还原结束，退出码 ') + $r.ExitCode)
     } catch {
-        Write-Log $tbLog ('还原出错：' + $_.Exception.Message)
+        Write-Log $tbLog ((M 'restore failed: ' '还原出错：') + $_.Exception.Message)
     } finally {
         $btnInstall.Enabled = $true
         $btnRestore.Enabled = $true
@@ -282,13 +285,13 @@ $btnRestore.add_Click({
 $form.add_Shown({
     try {
         Build-CheckList
-        Write-Log $tbLog ('面板就绪：组件表读取成功，游戏目录 ' + (Split-Path -Parent $RepoDir))
+        Write-Log $tbLog ((M 'panel ready: component list loaded, game folder ' '面板就绪：组件表读取成功，游戏目录 ') + (Split-Path -Parent $RepoDir))
     } catch {
-        Write-Log $tbLog ('读取组件表失败：' + $_.Exception.Message)
+        Write-Log $tbLog ((M 'failed to read component list: ' '读取组件表失败：') + $_.Exception.Message)
     }
 
     if ($SelfTest) {
-        Write-Log $tbLog '自检：对 flatfps 执行 DryRun 安装'
+        Write-Log $tbLog (M 'selftest: DryRun install of flatfps' '自检：对 flatfps 执行 DryRun 安装')
         $lines = @()
         try {
             $r = Invoke-Setup -componentIds @('flatfps') -mode '' -dryRun $true

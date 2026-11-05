@@ -1,8 +1,10 @@
-# VRK Enhance - visual editor for BepInEx plugin configs.
+﻿# VRK Enhance - visual editor for BepInEx plugin configs.
 # Reads BepInEx/config/vrk.*.cfg, edits every key, saves with .bak backups.
-param([string]$GameDir = '', [switch]$SelfTest)
+param([string]$GameDir = '', [switch]$SelfTest, [string]$Lang = '')
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot "i18n.ps1")
+$script:VRKLang = Resolve-VrkLang $Lang
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -57,7 +59,7 @@ $script:Dirty   = $false
 $script:Current = $null
 
 $form = New-Object Windows.Forms.Form
-$form.Text = 'VRK Enhance - plugin settings'
+$form.Text = (M 'VRK Enhance - 插件设置' 'VRK Enhance - plugin settings')
 $form.Size = New-Object Drawing.Size(1020, 660)
 $form.StartPosition = 'CenterScreen'
 $form.MinimumSize = New-Object Drawing.Size(840, 540)
@@ -67,7 +69,7 @@ $hint = New-Object Windows.Forms.Label
 $hint.Dock = 'Top'
 $hint.Height = 44
 $hint.Padding = New-Object Windows.Forms.Padding(10, 6, 10, 0)
-$hint.Text = 'Pick a key on the left, edit the value on the right, click Save. A .bak copy is made first. Restart the game to apply.'
+$hint.Text = (M '左边选键，右边改值，点 Save 保存。保存前会先做 .bak 备份。重启游戏生效。' 'Pick a key on the left, edit the value on the right, click Save. A .bak copy is made first. Restart the game to apply.')
 $form.Controls.Add($hint)
 
 $status = New-Object Windows.Forms.Label
@@ -94,7 +96,7 @@ $split.Panel1.Controls.Add($tree)
 $lblFile = New-Object Windows.Forms.Label
 $lblFile.Dock = 'Top'
 $lblFile.Height = 24
-$lblFile.Text = '(nothing selected)'
+$lblFile.Text = (M '（未选择）' '(nothing selected)')
 $lblFile.Font = New-Object Drawing.Font('Consolas', 9.5, [Drawing.FontStyle]::Bold)
 $split.Panel2.Controls.Add($lblFile)
 
@@ -173,7 +175,7 @@ function Load-All {
     $tree.ExpandAll()
     $total = 0
     foreach ($k in $script:Files.Keys) { $total += $script:Files[$k].Entries.Count }
-    $status.Text = '{0} file(s), {1} key(s)  |  {2}' -f $script:Files.Count, $total, $CfgDir
+    $status.Text = ((M '{0} file(s), {1} key(s)  |  {2}' '{0} 个文件，{1} 个键  |  {2}') -f $script:Files.Count, $total, $CfgDir)
 }
 
 function Find-Entry($tag) {
@@ -190,13 +192,13 @@ function Show-Entry($tag) {
     $lblFile.Text = '{0}   [{1}]' -f $tag.File, $e.Section
     $lblKey.Text = $e.Key
     $def = Get-DefaultValue $tag.File $e.Section $e.Key
-    if ($null -eq $def) { $lblDef.Text = 'default: (this key is not in payload/config)' }
-    else { $lblDef.Text = 'default: {0}' -f $def }
+    if ($null -eq $def) { $lblDef.Text = (M '默认值：（该键不在 payload/config 里）' 'default: (this key is not in payload/config)') }
+    else { $lblDef.Text = (M '默认值：{0}' 'default: {0}') -f $def }
     if ($e.Value -eq 'true' -or $e.Value -eq 'false') {
         $txtVal.Visible = $false
         $chkVal.Visible = $true
         $chkVal.Checked = ($e.Value -eq 'true')
-        $chkVal.Text = 'enabled  (file says {0})' -f $e.Value
+        $chkVal.Text = (M '启用（文件里是 {0}）' 'enabled  (file says {0})') -f $e.Value
     } else {
         $chkVal.Visible = $false
         $txtVal.Visible = $true
@@ -208,7 +210,7 @@ $tree.Add_AfterSelect({
     $n = $tree.SelectedNode
     if ($null -eq $n) { return }
     if ($null -eq $n.Tag.Key) {
-        $lblFile.Text = '{0}   [{1}]' -f $n.Tag.File, $(if ($null -eq $n.Tag.Section) { 'all sections' } else { $n.Tag.Section })
+        $lblFile.Text = '{0}   [{1}]' -f $n.Tag.File, $(if ($null -eq $n.Tag.Section) { (M '全部小节' 'all sections') } else { $n.Tag.Section })
         $script:Current = $null
         return
     }
@@ -237,7 +239,7 @@ function Apply-Current {
 
 function Save-All {
     Apply-Current | Out-Null
-    if (-not $script:Dirty) { $status.Text = 'nothing changed.'; return }
+    if (-not $script:Dirty) { $status.Text = (M '没有改动。' 'nothing changed.'); return }
     if (-not (Test-Path -LiteralPath $BackupDir)) { New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null }
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $saved = 0
@@ -252,27 +254,27 @@ function Save-All {
     }
     $script:Dirty = $false
     Load-All
-    $status.Text = 'saved {0} file(s); backups: {1}' -f $saved, $BackupDir
+    $status.Text = ((M 'saved {0} file(s); backups: {1}' '已保存 {0} 个文件；备份在 {1}') -f $saved, $BackupDir)
 }
 
-Add-Btn 'Save' { Save-All }
-Add-Btn 'Reset to default' {
-    if ($null -eq $script:Current) { $status.Text = 'pick a key first.'; return }
+Add-Btn (M '保存' 'Save') { Save-All }
+Add-Btn (M '恢复默认' 'Reset to default') {
+    if ($null -eq $script:Current) { $status.Text = (M '请先选一个键。' 'pick a key first.'); return }
     $e = Find-Entry $script:Current
     if ($null -eq $e) { return }
     $def = Get-DefaultValue $script:Current.File $e.Section $e.Key
-    if ($null -eq $def) { $status.Text = 'this key has no shipped default.'; return }
+    if ($null -eq $def) { $status.Text = (M '这个键没有出厂默认值。' 'this key has no shipped default.'); return }
     if ($chkVal.Visible) { $chkVal.Checked = ($def -eq 'true') } else { $txtVal.Text = $def }
     Apply-Current | Out-Null
-    $status.Text = 'reset {0} to default {1} (click Save to write)' -f $e.Key, $def
+    $status.Text = ((M 'reset {0} to default {1} (click Save to write)' '已把 {0} 恢复为默认值 {1}（点 Save 写入）') -f $e.Key, $def)
 }
-Add-Btn 'Reload' { $script:Dirty = $false; Load-All }
-Add-Btn 'Open config folder' { if (Test-Path -LiteralPath $CfgDir) { Start-Process explorer.exe $CfgDir } }
-Add-Btn 'Close' { $form.Close() }
+Add-Btn (M '重新载入' 'Reload') { $script:Dirty = $false; Load-All }
+Add-Btn (M '打开配置目录' 'Open config folder') { if (Test-Path -LiteralPath $CfgDir) { Start-Process explorer.exe $CfgDir } }
+Add-Btn (M '关闭' 'Close') { $form.Close() }
 
 $form.Add_FormClosing({
     if ($script:Dirty) {
-        $r = [Windows.Forms.MessageBox]::Show('Unsaved changes. Save before closing?', 'VRK Enhance', 'YesNoCancel')
+        $r = [Windows.Forms.MessageBox]::Show((M '还有未保存的改动，关闭前保存吗？' 'Unsaved changes. Save before closing?'), 'VRK Enhance', 'YesNoCancel')
         if ($r -eq 'Cancel') { $_.Cancel = $true; return }
         if ($r -eq 'Yes') { Save-All }
     }

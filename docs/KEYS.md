@@ -1,58 +1,64 @@
-# 按键表（免 VR / 键鼠）
+# Key map (no-VR mode)
 
-> 游戏内所有键位都由 `IllusionCamera.KeyInput()` 直接读 `Input.GetKey(KeyCode.XXX)`，其中一部分走 `KeyInput_Value(ref val, speed, addKey, subKey)`。
-> `VRK_FlatFPS` 用 **Harmony Transpiler 单趟替换 IL 里的 `KeyCode` 常量**（不改指令条数、不动分支标签），把原本的小键盘键位映射到主键盘，并额外接管了 E（交互）、F（切视角）。
+The game ships without a mouse/keyboard scheme: camera and touch are bound to a VR headset. `VRK_FlatFPS` re-wires the game's own controller, so these keys drive the original code paths rather than a parallel camera.
 
-## 移动与视角
+> 中文版：[zh-CN/KEYS.md](zh-CN/KEYS.md)
 
-| 按键 | 作用 | 备注 |
-| --- | --- | --- |
-| `W` `A` `S` `D` | 前 / 左 / 后 / 右 | 原是方向键，改成 FPS 习惯 |
-| 鼠标移动 | 转视角 | 不需要按住任何键；`[Camera] MouseSpeed=800` 调灵敏度 |
-| `PageUp` / `PageDown` | 上升 / 下降 | 第一人称下这两个键改为**实时调眼高**，每次 ±5 cm |
-| `F` | 切视角：第一人称 → 第三人称 → 自由 | 左上角会弹提示；`[Camera] ViewToggleKey` |
-| `R` | 重置视角（翻滚归零） | 游戏本身也用 R 做 VR 回中，属双保险 |
-| `6` / `4` | 左右转视角（yaw） | 原小键盘 6/4 |
-| `8` / `2` | 俯仰（pitch） | 原小键盘 8/2 |
-| `5` | 俯仰回正 | 原小键盘 5 |
-| `.` / `\` | 翻滚 | 按住 `Shift` 时步进 45° |
-| `/` | 翻滚回正 | |
-| `]` / `[` | 视野（FOV）+ / − | 原 `RightBracket` / `Equals` |
-| `;` | FOV 复位 | |
-| `=` / `-` | 键盘移动灵敏度 | 原小键盘 `+` / `-` |
-| `End` / `Home` | 拉近 / 拉远（第三人称距离） | |
-| 滚轮 | 第三人称距离微调 | |
-| `Shift` / `Ctrl` | 加速 ×3 / 减速 ×0.25（第三人称） | 游戏原逻辑 |
+---
 
-## 交互
+## Camera (third person — the original `IllusionCamera`)
 
-| 按键 | 作用 |
+| Key | Action |
 | --- | --- |
-| 左键（按住） | 决定 / 点击 UI / 抓取（等同 VR 手的 `GrabBegin`） |
-| `E` | 交互（凝视抓取，等同 VR 手柄扳机） |
-| 右键 | 取消 / 结束 |
-| 中键 | 切换 |
-| 按住 `Alt` | 释放鼠标指针（松手立刻锁定） |
+| Mouse move | Look around (no button needed) |
+| `W A S D` | Walk forward / left / back / right (was the arrow keys) |
+| `PageUp` / `PageDown` | Rise / lower |
+| `6` / `4` | Yaw left / right (was the numpad) |
+| `8` / `2` | Pitch up / down |
+| `5` | Level the pitch |
+| `End` / `Home` | Pull in / push out |
+| `.` / `\` | Roll (`Shift` = snap 45°) |
+| `/` | Reset roll |
+| `R` | Reset view (roll to zero; also recenters the game's own VR pose) |
+| `[` / `=` | Narrow / widen field of view |
+| `;` | Reset FOV |
+| `=` / `-` | Key sensitivity up / down |
+| Mouse wheel | Mouse sensitivity |
+| Left drag | Rotate |
+| Left + right drag | Pan |
+| Right drag | Distance |
+| `Shift` / `Ctrl` | ×3 / ×0.25 while moving |
 
-> 交互链路有三条，插件按顺序尝试，同一帧只触发一次：
-> `Button`（真的 UI 按钮） → `IPointerClickHandler` → `VRInteractiveItem.Down/Click/Up` → `InteractiveCommandController.InteractiveProc(碰撞体名)`。
+## First person (`F` to switch)
 
-## 界面
-
-| 按键 | 作用 |
+| Key | Action |
 | --- | --- |
-| `F7` | 显示 / 隐藏帮助面板（进游戏自动显示 5 秒后隐藏） |
-| `F10` | 立即 dump 渲染状态（相机 / Canvas / Graphic / Renderer / 光环），排障用 |
-| `F9` | `VRK_UpScale` 输出状态（`[Debug] StatusKey`） |
+| `F` | Cycle first person → third person → free camera |
+| Mouse move | Look (yaw turns the player rig, pitch stays on the camera) |
+| `W A S D` | Walk (2 m/s, `Shift` = ×3) |
+| `PageUp` / `PageDown` | Eye height ±5 cm (live, shows a toast) |
 
-## 不要用的键
+Free camera: same mouse + WASD, `PageUp`/`PageDown` for altitude, `Shift` to sprint. It is a flight camera — the game's idea of "where you stand" does not follow it.
 
-`C` 和 `P`（游戏原逻辑里按住它们会**禁用整个键盘键位输入**）、`Esc`（菜单）、`Home`（部分场景被 `DebugStartUp` 拿去做 ForceMouse 开关）。
+## Interaction
 
-## VR 模式
+| Key | Action |
+| --- | --- |
+| `E` | Interact: hand/gaze touch, the same call the VR hand makes |
+| Left click | Decide / act / click menus / grab |
+| Right click | Cancel / end |
+| Middle click | Next |
+| Aim | The gaze ring snaps to whatever you look at; corner brackets + `E` appear over interactables |
 
-设置 `VRKANOJO_VR=1`（用 `启动_VR模式.bat`）后：
+## Overlays
 
-- `VRK_FlatFPS` **完全不打补丁**，键位/准星/帮助面板/自建点击全部不生效，游戏回到原生 VR 逻辑
-- `VRK_Perf` / `VRK_PreWarm` / `VRK_TexPlus` / `VRK_UpScale` 各自停用
-- 光环（`OVRGazePointer`）是 VR 的准星，由头显控制，插件不再接管
+| Key | Action |
+| --- | --- |
+| `F7` | Show / hide the key reference (auto-shown 5 s after a scene loads) |
+| `F9` | Upscale status dump |
+| `F10` | Dump cameras / canvases / UI to the log |
+| Hold `Alt` | Release the mouse pointer (release the key to lock it again) |
+
+## VR mode
+
+Nothing above applies. The launcher's VR entry starts the game with every plugin disabled — controls, camera and interaction are the game's own.

@@ -1,0 +1,7 @@
+SELFTEST files=6
+SELFTEST keys=113
+SELFTEST firstfile=vrk.flatfps.cfg
+SELFTEST firstkey=FreeLook=true
+SELFTEST default=true
+SELFTEST newline=crlf
+SELFTEST cfgdir=E:\SteamLibrary\steamapps\common\VR_Kanojo\BepInEx\config

@@ -1,41 +1,27 @@
-# 启动“未响应”100 秒：SteamVR 客户端阻塞（与插件无关）
+# The 100-second "not responding" at startup
 
-## 证据
-Auto-dump（`E:\tmp\rk\dumps\watch.log`，17:52:22 起，pid 9748）：
+**Symptom.** After launching, nothing happens for one to two minutes. The window title says "not responding", the CPU stays near idle, and once it finally appears everything works fine.
 
-```
-+40s  state: responding=False ws=212MB cpu=1.2s
-+100s state: responding=False ws=212MB cpu=1.4s
-```
-
-主线程（tid 28444）栈，由 `E:\tmp\rk\dmpstack.py` 解出：
+**Cause.** `VR_Kanojo_Data/Plugins/openvr_api.dll` loads `vrclient_x64.dll`, which waits for the SteamVR runtime (`vrserver.exe`). That happens during Unity's graphics initialisation — **before** the BepInEx preloader runs, so no plugin can intercept it. Stack from a manual minidump taken while the process was unresponsive (pid 9748, 100 s in, `Responding = False`, CPU 1.4 s):
 
 ```
-ntdll+0xC8889
-  KERNELBASE+0x73F1E
-    VCRUNTIME140+0x1CE01
-      vrclient_x64.dll  (十余层)
-    ucrtbase+0x33B39
-  vrclient_x64.dll+0x4A0000
-  openvr_api.dll+0x1D72
-  VR_Kanojo.exe+0x6FB613      <- Unity 的 OpenVR 渲染后端
-  VR_Kanojo.exe+0x104C828
+ntdll+0xC8889  ← KERNELBASE+0x73F1E  ← VCRUNTIME140+0x1CE01
+  ← vrclient_x64.dll (a dozen frames)  ← ucrtbase+0x33B39
+  ← vrclient_x64+0x4A0000  ← openvr_api.dll+0x1D72
+  ← VR_Kanojo.exe+0x6FB613  ← VR_Kanojo.exe+0x104C828
 ```
 
-即 **Unity 的 OpenVR 后端 `openvr_api.dll` 去连 SteamVR，`vrclient_x64.dll` 在等 vrserver**，
-主线程被按住 100 秒。游戏日志里也一直有
-`VR: OpenVR Error! OpenVR failed initialization with error code Unknown error (310)`。
-`cpu` 40 秒只涨 0.2 秒 —— 纯等待，不是死循环。
+Windows marks a window "not responding" after 5 s without pumping messages, so the wait looks like a crash or a freeze. It is neither — the process is simply blocked in a synchronous call.
 
-Windows 的判定标准是“5 秒没有消息泵就把窗口标成未响应”，所以这 100 秒整段都显示未响应。
+**Fix, depending on your mode.**
 
-## 处理
-`VR_Kanojo_Data/Plugins/openvr_api.dll` 改名为 `openvr_api.dll.disabled`。
-Unity 找不到该模块就不会初始化 OpenVR，启动立即进入场景；VR Kanojo 本身是 Oculus
-（`OVRPlugin.dll`）作品，免 VR 游玩不需要 OpenVR。
+| Mode | What the entry does |
+| --- | --- |
+| No VR | Renames `VR_Kanojo_Data/Plugins/openvr_api.dll` → `openvr_api.dll.disabled` before launching, restores nothing (`启动_免VR模式.bat`, or the `openvr` component) |
+| VR | Checks `vrserver.exe`; if it is not running it starts SteamVR (`steam://rungameid/250820`) and polls for up to **90 s**; if SteamVR never appears it exits with code 2 instead of launching a game that would hang |
 
-回滚：把 `.disabled` 改回 `.dll`。
+Both entries go through `VR_Kanojo_fix.exe`, which also applies the SHA-1 patch (see [TECH-NOTES.md](TECH-NOTES.md) §1).
 
-## 附带发现
-`VR_Kanojo_Data/Plugins/openvr_api.dll` 是 2025-02-08 的文件，与 2016 年的游戏本体不同代，
-Unity 5.4.5f1 调用它的旧接口时本就会失败（error 310），失败前的那次连接尝试才是卡顿来源。
+**If you still see the stall:** you launched `VR_Kanojo.exe` directly (or via Steam). The patch and this rename only happen through the two provided entries.
+
+**What the stall is not.** It is not the FSR1 layer, not the prewarm, and not the scene loading itself. Scene loading in Unity 5.4 is synchronous (`Init → Init2 → Logo → Logo2 → Attention → Title`, 20–30 s total, 5–9 s gaps) and produces additional short "not responding" flickers; `VRK_Perf` only shortens those, it does not remove the synchronous design.
