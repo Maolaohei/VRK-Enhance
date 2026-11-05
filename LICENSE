@@ -1,4 +1,4 @@
-MIT License
+﻿MIT License
 
 Copyright (c) 2026 Maolaohei and VRK Enhance contributors
 
@@ -36,4 +36,7 @@ This repository does not include, link against, or redistribute:
   - Unity engine binaries or UnityPlayer source
   - Illusion's game assets
   - Intel XeSS SDK binaries
-  - BepInEx / HarmonyX binaries (install those separately)
+
+Bundled third-party binaries and their licenses are listed in THIRD-PARTY-NOTICES.md:
+  BepInEx 5.4.23.6 (MIT), UnityDoorstop 4.6.0 (LGPL-2.1), Mono.Cecil (MIT),
+  FidelityFX FSR 1.0 headers (MIT). All redistributed unmodified.

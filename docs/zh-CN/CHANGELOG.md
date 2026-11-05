@@ -72,6 +72,15 @@
 | 1.6.0/1.6.1 | `NativePass` 二分开关；`OnDestroy` 只 Release；presenter 相机不销毁 |
 | 1.7.0 | presenter 每帧强制 `rect`/`aspect`（否则准星与点击全偏） |
 
+## v1.2.1 — 许可整理
+
+- 新增 `THIRD-PARTY-NOTICES.md`：逐组件列出许可、UnityDoorstop 的 LGPL-2.1 合规说明、MIT 归属。
+- 许可证全文随包：`payload/bepinex/LICENSE-BepInEx-MIT.txt`、
+  `payload/bepinex/LICENSE-UnityDoorstop-LGPL-2.1.txt`。
+- 修正 v1.2.0 的两处错误：发布包 sha256 写错（`6c57a71441da...` → `6c57a714a892...`）；
+  `payload/bepinex/README.txt` 把整个 zip 标成 LGPL-2.1（实际只有 `winhttp.dll` 是，
+  BepInEx 本体是 MIT）；`LICENSE` 里「不分发 BepInEx」的表述也一并删掉。
+
 ## v1.2.0 — 自带 BepInEx + 按目录记账
 
 - 新增 `bepinex` 组件：随包附带 BepInEx 5.4.23.6（x64，Doorstop 4.6，`payload/bepinex/BepInEx_win_x64_5.4.23.6.zip`，sha256 `6c57a714…`），仅当游戏目录缺少 `BepInEx/core/BepInEx.Preloader.dll` 时解包；选中任何插件组件会自动带上它。卸载只删它解出的 22 个文件与随之空掉的目录。

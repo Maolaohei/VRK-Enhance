@@ -17,6 +17,17 @@ Deep, per-version detail lives in the Chinese notes: [zh-CN/CHANGELOG.md](zh-CN/
 
 ---
 
+## v1.2.1 — licensing cleanup
+
+- Added `THIRD-PARTY-NOTICES.md` with per-component licenses, an explicit LGPL-2.1
+  compliance statement for UnityDoorstop, and the MIT attributions.
+- Shipped license texts next to the bundle: `payload/bepinex/LICENSE-BepInEx-MIT.txt`,
+  `payload/bepinex/LICENSE-UnityDoorstop-LGPL-2.1.txt`.
+- Corrected two errors from v1.2.0: the bundle's sha256 was misprinted
+  (`6c57a71441da...` -> `6c57a714a892...`), and `payload/bepinex/README.txt` labelled the
+  whole zip LGPL-2.1 although only `winhttp.dll` (Doorstop) is LGPL-2.1 while BepInEx itself
+  is MIT. `LICENSE` also no longer claims we do not redistribute BepInEx.
+
 ## v1.2.0 — BepInEx bootstrap + per-folder install state
 
 - New `bepinex` component: bundles BepInEx 5.4.23.6 (x64, Doorstop 4.6, `payload/bepinex/BepInEx_win_x64_5.4.23.6.zip`, sha256 `6c57a714…`) and extracts it only when `BepInEx/core/BepInEx.Preloader.dll` is missing. Selecting any plugin component pulls it in automatically; uninstall removes exactly the 22 extracted files plus the empty folders.

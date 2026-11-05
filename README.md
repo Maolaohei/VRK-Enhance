@@ -117,6 +117,10 @@ Needs Windows, .NET SDK 8+ and the game's `Managed` folder for references; the n
 
 ## License
 
+MIT for this project's own code. Bundled third-party binaries keep their own licenses —
+see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) (BepInEx 5.4.23.6 is MIT,
+UnityDoorstop 4.6.0 is LGPL-2.1 and stays a replaceable `winhttp.dll`).
+
 MIT — see [LICENSE](LICENSE). Third-party: FSR1 headers (MIT, AMD), Mono.Cecil (MIT), Harmony (MIT), BepInEx (LGPL-2.1).
 
 ## Disclaimer

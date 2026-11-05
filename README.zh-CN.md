@@ -187,6 +187,10 @@ verify.cmd           rem 只校验
 
 ## 八、许可
 
+本项目自身代码为 MIT。随包的第三方二进制各自保留原许可 —— 详见
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)（BepInEx 5.4.23.6 是 MIT；
+UnityDoorstop 4.6.0 是 LGPL-2.1，且始终保持为可替换的独立 `winhttp.dll`）。
+
 MIT（本仓库自有代码）。第三方：Mono.Cecil（MIT）、AMD FidelityFX FSR1（MIT）、Unity 头文件（Unity Companion License）。详见 `LICENSE`。
 
 游戏本体、`BepInEx` 本体、以及 `VR_Kanojo_Data` 里的资源都不在本仓库内。
