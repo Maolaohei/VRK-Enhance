@@ -1,0 +1,30 @@
+# build output
+dist/
+build/
+*.dll
+*.pdb
+*.cso
+
+# 但验证器与着色器资源要留在仓库里
+!fixtures/Mono.Cecil.dll
+!plugins/VRK_UpScale/native/*.cso
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+.vscode/
+
+# 运行时产物
+*.log
+BepInEx/LogOutput.log*
+vrk_frame_*.png
+*.dmp
+
+# 发布载荷：成品二进制要进仓库（用户下载即可用），所以单独放行
+!payload/plugins/*.dll
+!payload/native/*.dll
+
+# 本机安装状态（manifest + 备份），属于使用者私有数据
+state/

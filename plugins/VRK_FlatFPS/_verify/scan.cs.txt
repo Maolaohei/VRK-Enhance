@@ -1,0 +1,66 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
+
+// Scans every enabled BepInEx plugin for interaction with the code paths that
+// control the white fade curtain / camera rig / flat-mode detection.
+class Scan
+{
+    static readonly string[] Watch =
+    {
+        "VRCameraFade", "LogoScene", "InitScene2", "IllusionCamera",
+        "OVRCameraRig", "ForceMouse_", "CheckHMD", "VRCamera", "OVRManager"
+    };
+
+    static int Main(string[] a)
+    {
+        foreach (var path in a)
+        {
+            AssemblyDefinition asm;
+            try { asm = AssemblyDefinition.ReadAssembly(path); }
+            catch (Exception e) { Console.WriteLine("!! cannot read " + path + " : " + e.Message); continue; }
+
+            var hits = new SortedDictionary<string, List<string>>();
+            foreach (var t in asm.MainModule.Types.SelectMany(Flat))
+            {
+                foreach (var m in t.Methods)
+                {
+                    if (!m.HasBody) continue;
+                    foreach (var i in m.Body.Instructions)
+                    {
+                        var mr = i.Operand as MethodReference;
+                        var tr = i.Operand as TypeReference;
+                        string name = mr != null ? mr.DeclaringType.Name + "::" + mr.Name : (tr != null ? tr.Name : null);
+                        if (name == null) continue;
+                        string kind = null;
+                        if (mr != null && mr.Name == "SetActive") kind = "SetActive";
+                        else if (Watch.Any(w => name.IndexOf(w, StringComparison.Ordinal) >= 0)) kind = "watch";
+                        if (kind == null) continue;
+                        string key = kind == "SetActive" ? "SetActive calls" : "references fade/logo/camera-rig types";
+                        if (!hits.ContainsKey(key)) hits[key] = new List<string>();
+                        string rec = t.Name + "::" + m.Name + " -> " + mr.DeclaringType.Name + "::" + mr.Name;
+                        if (!hits[key].Contains(rec)) hits[key].Add(rec);
+                    }
+                }
+            }
+
+            Console.WriteLine("### " + System.IO.Path.GetFileName(path));
+            if (hits.Count == 0) { Console.WriteLine("    (no fade / logo / camera-rig interaction)"); continue; }
+            foreach (var kv in hits)
+            {
+                Console.WriteLine("    " + kv.Key + ":");
+                foreach (var r in kv.Value.Take(12)) Console.WriteLine("      - " + r);
+                if (kv.Value.Count > 12) Console.WriteLine("      ... +" + (kv.Value.Count - 12) + " more");
+            }
+        }
+        return 0;
+    }
+
+    static IEnumerable<TypeDefinition> Flat(TypeDefinition t)
+    {
+        yield return t;
+        foreach (var n in t.NestedTypes) foreach (var x in Flat(n)) yield return x;
+    }
+}

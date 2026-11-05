@@ -1,0 +1,41 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
+
+class KeyDump
+{
+    enum K
+    {
+        None = 0, A = 97, D = 100, S = 115, W = 119,
+        Space = 32,
+        UpArrow = 273, DownArrow = 274, RightArrow = 275, LeftArrow = 276
+    }
+
+    static void Main(string[] a)
+    {
+        var asm = AssemblyDefinition.ReadAssembly(a[0]);
+        var t = asm.MainModule.Types.SelectMany(Flat).First(x => x.Name == "PatchFpsKeys");
+        var m = t.Methods.First(x => x.Name == "Prefix");
+        Console.WriteLine("== " + t.FullName + "::" + m.Name + " (" + m.Parameters.Count + " params)");
+        foreach (var p in m.Parameters)
+            Console.WriteLine("   param " + p.Name + " : " + (p.ParameterType.IsByReference ? "ref " : "") + p.ParameterType.GetElementType().Name);
+        foreach (var i in m.Body.Instructions)
+        {
+            string op = "";
+            if (i.Operand is MethodReference mr) op = mr.DeclaringType.Name + "::" + mr.Name;
+            else if (i.Operand is FieldReference fr) op = fr.DeclaringType.Name + "::" + fr.Name;
+            else if (i.Operand != null) op = i.Operand.ToString();
+            if (i.OpCode == OpCodes.Ldc_I4 && i.Operand is int v) op = v + "   // " + (K)v;
+            else if (i.OpCode == OpCodes.Ldc_I4_S && i.Operand is sbyte s) op = s + "   // " + (K)(int)s;
+            Console.WriteLine("  IL_{0:x4}: {1,-12} {2}", i.Offset, i.OpCode, op);
+        }
+    }
+
+    static IEnumerable<TypeDefinition> Flat(TypeDefinition t)
+    {
+        yield return t;
+        foreach (var n in t.NestedTypes) foreach (var x in Flat(n)) yield return x;
+    }
+}
