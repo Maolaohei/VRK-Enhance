@@ -72,6 +72,14 @@
 | 1.6.0/1.6.1 | `NativePass` 二分开关；`OnDestroy` 只 Release；presenter 相机不销毁 |
 | 1.7.0 | presenter 每帧强制 `rect`/`aspect`（否则准星与点击全偏） |
 
+## v1.2.2 — 准星改为自绘
+
+- `fixtures/crosshair_128.bin` 现在由 `fixtures/make_crosshair.py` 生成（纯距离场，不含任何第三方素材）：
+  浅红圆环 + 两侧细亮边 + 四根亮色刻度。原来的缓冲区是从 ManlyMarco 的 *Play Without VR* 里提取的，
+  那份插件的许可无法从二进制确认。
+- `VRK_FlatFPS.dll` 用新贴图重新构建（165 KB，sha256 `295797c6…`），五个验证器仍全绿，安装包负载已同步。
+- `THIRD-PARTY-NOTICES.md` 不再标注第三方贴图 —— 发布包里已无来源不明的素材。
+
 ## v1.2.1 — 许可整理
 
 - 新增 `THIRD-PARTY-NOTICES.md`：逐组件列出许可、UnityDoorstop 的 LGPL-2.1 合规说明、MIT 归属。

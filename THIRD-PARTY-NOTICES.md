@@ -14,7 +14,6 @@ Everything below is redistributed **unmodified**, in the exact form its upstream
 | UnityDoorstop (`winhttp.dll`, `doorstop_config.ini`) | 4.6.0 | **LGPL-2.1** | same zip | no |
 | Mono.Cecil | 0.11.x | **MIT** (© 2008–2015 Jb Evain) | `fixtures/Mono.Cecil.dll` (build/verify tooling only, not loaded by the game) | no |
 | FidelityFX FSR 1.0 headers (`ffx_a.h`, `ffx_fsr1.h`) | FSR 1.0 | **MIT** (© 2021 Advanced Micro Devices, Inc.) | `plugins/VRK_UpScale/native/` (compiled into our own HLSL) | no |
-| Crosshair sprite (`fixtures/crosshair_128.bin`) | — | extracted from ManlyMarco's *Play Without VR* plugin | `plugins/VRK_FlatFPS` embedded resource | downscaled to 128×128 RGBA |
 
 License texts are shipped next to the files they cover:
 
@@ -86,7 +85,7 @@ Intel XeSS SDK 代码。
 | UnityDoorstop（`winhttp.dll` 等） | 4.6.0 | **LGPL-2.1** | 同一个 zip |
 | Mono.Cecil | 0.11.x | **MIT** | `fixtures/Mono.Cecil.dll`（仅构建/校验用，游戏不加载） |
 | FidelityFX FSR 1.0 头文件 | FSR 1.0 | **MIT**（© 2021 AMD） | `plugins/VRK_UpScale/native/` |
-| 准星贴图 | — | 取自 ManlyMarco 的 *Play Without VR* | `plugins/VRK_FlatFPS` 内嵌资源（缩放到 128×128） |
+| 准星贴图 | — | **本项目自绘**（`fixtures/make_crosshair.py`，MIT） | `plugins/VRK_FlatFPS` 内嵌资源（128×128 RGBA） |
 
 **LGPL-2.1（只涉及 UnityDoorstop）是怎么满足的**：① 许可证全文随包（`payload/bepinex/LICENSE-UnityDoorstop-LGPL-2.1.txt`）；
 ② 对应源码就是上游 tag `v4.6.0`（我们没打补丁，上游源码＝交付源码）；③ `winhttp.dll` 是独立文件、由游戏按名字加载，
