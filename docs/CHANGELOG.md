@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Component versions shipped in the current release:
 
@@ -16,6 +16,12 @@ Component versions shipped in the current release:
 Deep, per-version detail lives in the Chinese notes: [zh-CN/CHANGELOG.md](zh-CN/CHANGELOG.md).
 
 ---
+
+## v1.2.0 — BepInEx bootstrap + per-folder install state
+
+- New `bepinex` component: bundles BepInEx 5.4.23.6 (x64, Doorstop 4.6, `payload/bepinex/BepInEx_win_x64_5.4.23.6.zip`, sha256 `6c57a714…`) and extracts it only when `BepInEx/core/BepInEx.Preloader.dll` is missing. Selecting any plugin component pulls it in automatically; uninstall removes exactly the 22 extracted files plus the empty folders.
+- `state/manifest.json` entries are now tagged with the game folder, so installing into a second folder (or testing against a fake one) no longer mixes bookkeeping, and `-Mode restore` only touches entries of the folder you pass.
+- Installer version 1.7.0.
 
 ## v1.1.0 — bilingual tooling
 

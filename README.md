@@ -1,4 +1,4 @@
-# VRK Enhance
+﻿# VRK Enhance
 
 **An enhancement kit for *VR Kanojo* (Illusion, Unity 5.4.5f1).**
 Run it without a headset, upscale it with FSR1, fix a stock crash, unlock content — plus a one-click installer with a graphical panel and a config editor.
@@ -40,7 +40,7 @@ Everything is **out-of-tree**: game files are never modified. Each component can
 
 ## Install
 
-**Easiest:** extract the release, run the installer panel (`安装面板.cmd`), tick what you want, press *Install selected*. The panel finds the game folder by itself (registry → Steam libraries → common paths) and forwards everything to `setup.ps1`.
+**Easiest:** extract the release, run the installer panel (`安装面板.cmd`), tick what you want, press *Install selected*. The panel finds the game folder by itself (registry → Steam libraries → common paths) and forwards everything to `setup.ps1`. BepInEx 5.4.23.6 x64 ships in `payload/bepinex/` and is installed automatically when the game folder has none — the kit works offline, nothing else to download.
 
 Scripted equivalents, run from the package folder:
 

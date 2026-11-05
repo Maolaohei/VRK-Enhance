@@ -143,6 +143,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup.ps1 -GameDir "D:
 
 | id | 落地位置 | 备注 |
 | --- | --- | --- |
+| `bepinex` | `winhttp.dll`、`doorstop_config.ini`、`.doorstop_version`、`BepInEx/**`（22 个文件，Doorstop 4.6） | 游戏目录里没有 `BepInEx/core/BepInEx.Preloader.dll` 时才会解包；装任何插件时如果缺 BepInEx 会自动带上 |
 | `flatfps` | `BepInEx/plugins/VRK_FlatFPS.dll` | 免 VR 必装。白屏、眼高、WASD、鼠标视角、点菜单、E 交互、准星都在这里面 |
 | `upscale` | `BepInEx/plugins/VRK_UpScale.dll` + `VR_Kanojo_Data/Plugins/vrkup.dll` | 原生 DLL 必须放 `VR_Kanojo_Data/Plugins`，Unity 只从那里加载原生插件 |
 | `perf` | `BepInEx/plugins/VRK_Perf.dll` | 默认 `VSync=0`、不锁帧；240Hz 屏建议配合显卡驱动侧限帧 |

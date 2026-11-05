@@ -1,4 +1,4 @@
-# Install / restore
+﻿# Install / restore
 
 Everything here is reversible by name: the installer records what it did in `state/manifest.json`, backs up anything it overwrites into `state/backup/`, and `-Mode restore` undoes exactly those steps.
 
@@ -11,7 +11,7 @@ Everything here is reversible by name: the installer records what it did in `sta
 | Requirement | Note |
 | --- | --- |
 | VR Kanojo installed | Steam version, game folder containing `VR_Kanojo.exe` |
-| BepInEx 5.4.x | Ships with the game folder in most distributions. If `BepInEx/` is missing, install BepInEx 5 x64 first |
+| BepInEx 5.4.x | The installer bundles 5.4.23.6 (x64) and adds it automatically when `BepInEx/core/BepInEx.Preloader.dll` is missing |
 | Windows PowerShell 5.1 | Built into Windows 10/11 — nothing to install |
 | .NET 8 SDK | Only if you build the plugins yourself |
 
@@ -97,6 +97,7 @@ If nothing matches it stops with two options: put the package inside the game ro
 
 | id | Files written | Config |
 | --- | --- | --- |
+| `bepinex` | `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `BepInEx/**` (22 files, Doorstop 4.6) | — |
 | `flatfps` | `BepInEx/plugins/VRK_FlatFPS.dll` | `BepInEx/config/vrk.flatfps.cfg` |
 | `upscale` | `BepInEx/plugins/VRK_UpScale.dll`, `VR_Kanojo_Data/Plugins/vrkup.dll` | `vrk.upscale.cfg` |
 | `perf` | `BepInEx/plugins/VRK_Perf.dll` | `vrk.perf.cfg` |
@@ -106,6 +107,8 @@ If nothing matches it stops with two options: put the package inside the game ro
 | `launcher` | `VR_Kanojo_fix.exe`, `启动_免VR模式.bat`, `启动_VR模式.bat` (+ two desktop shortcuts) | — |
 | `openvr` | renames `VR_Kanojo_Data/Plugins/openvr_api.dll` → `.disabled` | — |
 | `devtools` | renames `ConfigurationManager.dll`, `RuntimeUnityEditor/RuntimeUnityEditor.Bepin5.dll`, `ScriptLoader.dll`, `VRK_PlayWithoutVR.dll` → `.disabled` | — |
+
+`bepinex` is skipped when a BepInEx installation is already there, and it is pulled in **automatically** whenever you select a plugin component without having BepInEx installed. Restore deletes exactly the 22 files it extracted (and the empty folders).
 
 Config files are only written when they do not exist yet (`OnlyIfMissing`) — your tuned values survive reinstalls. Delete the file (or restore first) if you want the shipped defaults back.
 
@@ -134,5 +137,7 @@ Nothing ever deletes a game file: the two rename components only add a `.disable
 | Unlock did nothing | It writes on the title screen. Install `unlock`, start the game, wait for the title, then quit. Check for `unlock: ALLClearData() applied` |
 | The panel cannot find the game | Pass `-GameDir`, or put the package into the game root |
 | `Permission denied` while installing | The game is still running — close it and retry |
+| Everything installs but no plugin loads | BepInEx was already there but broken (missing `BepInEx/core/BepInEx.Preloader.dll`). Restore the `bepinex` component, delete the leftover `BepInEx` folder, install again |
+| Installed into the wrong folder once | `state/manifest.json` scopes every entry by game folder, so installs in different folders no longer interfere. Run `-Mode restore -GameDir <the other folder>` to clean that one out |
 
 Logs: `BepInEx/LogOutput.log`. Installer history: `state/manifest.json`, `state/gui-last.log`.

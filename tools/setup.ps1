@@ -181,6 +181,13 @@ function Write-Err2($text) { Write-Host "  XX  $text" -ForegroundColor Red }
 #   copy   : repo relative source -> game relative destination
 #   rename : game relative path -> same path + Suffix   (a runtime toggle, reversible)
 $Catalog = [ordered]@{
+    bepinex = @{
+        Title = (M 'BepInEx 5.4 runtime (install if missing)' 'BepInEx 5.4 运行时（缺失时安装）')
+        Note  = (M 'Needed by every plugin. Skipped when BepInEx/core/BepInEx.Preloader.dll already exists' '所有插件的前置。已有 BepInEx/core/BepInEx.Preloader.dll 时自动跳过')
+        Ops   = @(
+            @{ Kind = 'unzip'; Src = 'payload/bepinex/BepInEx_win_x64_5.4.23.6.zip' }
+        )
+    }
     flatfps = @{
         Title = (M 'No-VR core (white screen / camera / keys / clicking / crosshair)' '免 VR 核心（白屏修复 / 相机 / 键位 / 点击 / 准星）')
         Note  = (M 'Required without a headset: white screen fix, eye height, WASD, Alt frees the cursor, E interacts' '没有头显时必装：修白屏、补眼高、WASD、Alt 释放指针、E 交互')
@@ -305,6 +312,14 @@ function Invoke-Install([string[]]$ids) {
     $entries = [System.Collections.Generic.List[object]]::new()
     foreach ($e in (Get-Manifest)) { $entries.Add($e) }
 
+    if (-not (Test-Path -LiteralPath (Join-Path $GameDir 'BepInEx/core/BepInEx.Preloader.dll'))) {
+        $pluginIds = @($ids | Where-Object { $_ -ne 'bepinex' -and $_ -ne 'launcher' -and $_ -ne 'openvr' -and $_ -ne 'devtools' })
+        if ($pluginIds.Count -gt 0 -and ($ids -notcontains 'bepinex')) {
+            Write-Warn2 (M 'BepInEx is not installed in the game folder - adding the bepinex component automatically.' '游戏目录里没有 BepInEx，已自动加入 bepinex 组件。')
+            $ids = @('bepinex') + $ids
+        }
+    }
+
     foreach ($id in $ids) {
         $comp = $Catalog[$id]
         if (-not $comp) { Write-Err2 (M "unknown component: $id" "未知组件: $id"); continue }
@@ -324,11 +339,12 @@ function Invoke-Install([string[]]$ids) {
                     continue
                 }
 
-                $known = $entries | Where-Object { $_.Id -eq $id -and $_.Dst -eq $op.Dst -and $_.Kind -eq 'copy' }
+                $known = $entries | Where-Object { $_.Id -eq $id -and ((-not $_.Gd) -or ($_.Gd -eq $GameDir)) -and $_.Dst -eq $op.Dst -and $_.Kind -eq 'copy' }
                 if (-not $known) {
                     $backup = Backup-File $dst $op.Dst
                     $entries.Add([pscustomobject]@{
                         Id     = $id
+                        Gd     = $GameDir
                         Kind   = 'copy'
                         Dst    = $op.Dst
                         Backup = $backup
@@ -342,6 +358,51 @@ function Invoke-Install([string[]]$ids) {
                 Copy-Item -LiteralPath $src -Destination $dst -Force
                 Write-Ok (M "copied $($op.Dst)" "复制 $($op.Dst)")
             }
+            elseif ($op.Kind -eq 'unzip') {
+                $zip = Join-Path $RepoDir $op.Src
+                if (-not (Test-Path -LiteralPath $zip)) { Write-Err2 (M "missing archive: $($op.Src)" "缺少压缩包: $($op.Src)"); continue }
+                $probe = Join-Path $GameDir 'BepInEx/core/BepInEx.Preloader.dll'
+                if (Test-Path -LiteralPath $probe) { Write-Skip (M 'BepInEx is already present in the game folder' '游戏目录里已经有 BepInEx，跳过'); continue }
+
+                $known = $entries | Where-Object { $_.Id -eq $id -and ((-not $_.Gd) -or ($_.Gd -eq $GameDir)) -and $_.Kind -eq 'unzip' }
+                if ($DryRun) { Write-Step (M "would extract $($op.Src) into the game folder" "会解包 $($op.Src) 到游戏目录"); continue }
+
+                $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('vrk-bepinex-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+                if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+                New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+                try {
+                    if (Get-Command Expand-Archive -ErrorAction SilentlyContinue) {
+                        Expand-Archive -LiteralPath $zip -DestinationPath $tmp -Force
+                    } else {
+                        Add-Type -AssemblyName System.IO.Compression.FileSystem
+                        [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $tmp)
+                    }
+                    $sep = [char[]]@(92, 47)
+                    $files = [System.Collections.Generic.List[string]]::new()
+                    Get-ChildItem -LiteralPath $tmp -Recurse -File | ForEach-Object {
+                        $rel = $_.FullName.Substring($tmp.Length).TrimStart($sep)
+                        $target = Join-Path $GameDir $rel
+                        $tdir = Split-Path -Parent $target
+                        if (-not (Test-Path -LiteralPath $tdir)) { New-Item -ItemType Directory -Path $tdir -Force | Out-Null }
+                        Copy-Item -LiteralPath $_.FullName -Destination $target -Force
+                        $files.Add($rel)
+                    }
+                    if (-not $known) {
+                        $entries.Add([pscustomobject]@{
+                            Id     = $id
+                            Gd     = $GameDir
+                            Kind   = 'unzip'
+                            Dst    = '.'
+                            Files  = @($files)
+                            Backup = ''
+                            Time   = (Get-Date).ToString('s')
+                        })
+                    }
+                    Write-Ok (M "extracted BepInEx ($($files.Count) files)" "已解包 BepInEx（$($files.Count) 个文件）")
+                } finally {
+                    Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            }
             elseif ($op.Kind -eq 'shortcut') {
                 if ($NoShortcut) { Write-Skip (M "skip shortcut $($op.Name) (-NoShortcut)" "跳过快捷方式 $($op.Name)（-NoShortcut）"); continue }
 
@@ -352,10 +413,11 @@ function Invoke-Install([string[]]$ids) {
                 if ([string]::IsNullOrWhiteSpace($lnkDir)) { Write-Err2 (M 'desktop folder not found, pass -ShortcutDir' '找不到桌面目录，用 -ShortcutDir 指定'); continue }
                 $lnk = Join-Path $lnkDir $op.Name
 
-                $known = $entries | Where-Object { $_.Id -eq $id -and $_.Dst -eq $lnk -and $_.Kind -eq 'shortcut' }
+                $known = $entries | Where-Object { $_.Id -eq $id -and ((-not $_.Gd) -or ($_.Gd -eq $GameDir)) -and $_.Dst -eq $lnk -and $_.Kind -eq 'shortcut' }
                 if (-not $known) {
                     $entries.Add([pscustomobject]@{
                         Id     = $id
+                        Gd     = $GameDir
                         Kind   = 'shortcut'
                         Dst    = $lnk
                         Backup = ''
@@ -388,10 +450,11 @@ function Invoke-Install([string[]]$ids) {
                     continue
                 }
 
-                $known = $entries | Where-Object { $_.Id -eq $id -and $_.Dst -eq $dstRel -and $_.Kind -eq 'rename' }
+                $known = $entries | Where-Object { $_.Id -eq $id -and ((-not $_.Gd) -or ($_.Gd -eq $GameDir)) -and $_.Dst -eq $dstRel -and $_.Kind -eq 'rename' }
                 if (-not $known) {
                     $entries.Add([pscustomobject]@{
                         Id     = $id
+                        Gd     = $GameDir
                         Kind   = 'rename'
                         From   = $op.Src
                         Dst    = $dstRel
@@ -428,6 +491,7 @@ function Invoke-Restore([string[]]$ids) {
     $keep = [System.Collections.Generic.List[object]]::new()
     foreach ($entry in $entries) {
         if ($ids.Count -gt 0 -and ($ids -notcontains $entry.Id)) { $keep.Add($entry); continue }
+        if ($entry.Gd -and ($entry.Gd -ne $GameDir)) { $keep.Add($entry); continue }
 
         if ($entry.Kind -eq 'shortcut') {
             if ($DryRun) { Write-Step (M "would delete shortcut $($entry.Dst)" "会删除快捷方式 $($entry.Dst)"); continue }
@@ -458,6 +522,16 @@ function Invoke-Restore([string[]]$ids) {
                 Write-Ok (M "removed $($entry.Dst)" "移除 $($entry.Dst)")
             }
         }
+        elseif ($entry.Kind -eq 'unzip') {
+            $cnt = @($entry.Files).Count
+            if ($DryRun) { Write-Step (M "would remove the $cnt file(s) extracted for BepInEx" "会删除 BepInEx 解出的 $cnt 个文件"); continue }
+            $n = 0
+            foreach ($rel in @($entry.Files)) {
+                $f = Join-Path $GameDir $rel
+                if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force; $n++ }
+            }
+            Write-Ok (M "removed $n BepInEx file(s)" "已删除 $n 个 BepInEx 文件")
+        }
         elseif ($entry.Kind -eq 'rename') {
             if ($DryRun) { Write-Step (M "would rename back $($entry.From)" "会改名回 $($entry.From)"); continue }
             $fromFull = Join-Path $GameDir $entry.From
@@ -472,6 +546,15 @@ function Invoke-Restore([string[]]$ids) {
     }
 
     Save-Manifest $keep
+
+    if (-not $DryRun) {
+        foreach ($d in @('BepInEx/plugins', 'BepInEx/config', 'BepInEx/core', 'BepInEx')) {
+            $df = Join-Path $GameDir $d
+            if ((Test-Path -LiteralPath $df) -and -not (Get-ChildItem -LiteralPath $df -Force -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+                Remove-Item -LiteralPath $df -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
 
     if (-not $DryRun -and (Test-Path -LiteralPath $BackupDir)) {
         Get-ChildItem -LiteralPath $BackupDir -Directory -Recurse -ErrorAction SilentlyContinue |
@@ -525,6 +608,7 @@ if ($List) {
     $lines = @()
     foreach ($id in $Catalog.Keys) {
         $on = [bool]$installedIds[$id]
+        if ($id -eq 'bepinex') { $on = Test-Path -LiteralPath (Join-Path $GameDir 'BepInEx/core/BepInEx.Preloader.dll') }
         $rows += [pscustomobject]@{ Id = $id; Title = $Catalog[$id].Title; Note = $Catalog[$id].Note; Installed = $on }
         $flag = '0'
         if ($on) { $flag = '1' }

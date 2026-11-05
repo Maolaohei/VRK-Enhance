@@ -86,7 +86,9 @@ cleared opaque fade panel at Awake (was alpha=1.00)                 ← 白屏�
 
 ## 四、安装
 
-前置条件：游戏根目录已有 **BepInEx 5.4.12 x64**（`winhttp.dll` + `BepInEx/core`）。那是 BepInEx 本体，本仓库不负责安装。
+前置条件：BepInEx 5.4 x64（`winhttp.dll` + `BepInEx/core`）。游戏目录里没有也没关系 —— 安装器会自己装（见下）。
+
+BepInEx 5.4.23.6 (x64) 随包放在 `payload/bepinex/`：游戏目录里没有 `BepInEx/core/BepInEx.Preloader.dll` 时会自动装上，全程离线，不用额外下载。
 
 游戏目录不用填：仓库放在游戏根目录时直接命中；放别处也会顺着父目录 → Steam 库（注册表 + `libraryfolders.vdf`）→ 各盘常见路径自己找，认不出来才需要 `-GameDir`。查当前定位结果：`powershell -File tools/setup.ps1 -EchoGameDir`。
 

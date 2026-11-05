@@ -72,6 +72,11 @@
 | 1.6.0/1.6.1 | `NativePass` 二分开关；`OnDestroy` 只 Release；presenter 相机不销毁 |
 | 1.7.0 | presenter 每帧强制 `rect`/`aspect`（否则准星与点击全偏） |
 
+## v1.2.0 — 自带 BepInEx + 按目录记账
+
+- 新增 `bepinex` 组件：随包附带 BepInEx 5.4.23.6（x64，Doorstop 4.6，`payload/bepinex/BepInEx_win_x64_5.4.23.6.zip`，sha256 `6c57a714…`），仅当游戏目录缺少 `BepInEx/core/BepInEx.Preloader.dll` 时解包；选中任何插件组件会自动带上它。卸载只删它解出的 22 个文件与随之空掉的目录。
+- `state/manifest.json` 的每条记录都写入所属游戏目录，装到第二个目录（或拿假目录测试）不再串账，`-Mode restore` 只处理你当前传的那个目录。
+
 ## 安装器 / 面板
 
 | 版本 | 改动 | 为什么要它 |
